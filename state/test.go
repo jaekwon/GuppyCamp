@@ -25,10 +25,11 @@ func Tempfile(prefix string) (*os.File, string) {
 func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *account.PrivAccount) {
 	privAccount := account.GenPrivAccount()
 	acc := &account.Account{
-		Address:  privAccount.PubKey.Address(),
-		PubKey:   privAccount.PubKey,
-		Sequence: RandUint(),
-		Balance:  minBalance,
+		Address:     privAccount.PubKey.Address(),
+		PubKey:      privAccount.PubKey,
+		Sequence:    RandUint(),
+		Balance:     minBalance,
+		Permissions: account.DefaultPermissions,
 	}
 	if randBalance {
 		acc.Balance += uint64(RandUint32())

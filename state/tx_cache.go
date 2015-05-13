@@ -79,6 +79,7 @@ func (cache *TxCache) CreateAccount(creator *vm.Account) *vm.Account {
 			Code:        nil,
 			Nonce:       0,
 			StorageRoot: Zero256,
+			Other:       otherAccountInfo{nil, toStateAccount(cache.GetAccount(LeftPadWord256(ac.GlobalPermissionsAddress))).Permissions},
 		}
 		cache.accounts[addr] = vmAccountInfo{account, false}
 		return account
@@ -151,6 +152,12 @@ func NewContractAddress(caller []byte, nonce uint64) []byte {
 	return sha3.Sha3(temp)[:20]
 }
 
+// struct for carrying data the vm need not know about
+type otherAccountInfo struct {
+	PubKey      ac.PubKey
+	Permissions ac.Permissions
+}
+
 // Converts backend.Account to vm.Account struct.
 func toVMAccount(acc *ac.Account) *vm.Account {
 	return &vm.Account{
@@ -159,16 +166,20 @@ func toVMAccount(acc *ac.Account) *vm.Account {
 		Code:        acc.Code, // This is crazy.
 		Nonce:       uint64(acc.Sequence),
 		StorageRoot: LeftPadWord256(acc.StorageRoot),
-		Other:       acc.PubKey,
+		Other:       otherAccountInfo{acc.PubKey, acc.Permissions},
 	}
 }
 
 // Converts vm.Account to backend.Account struct.
 func toStateAccount(acc *vm.Account) *ac.Account {
-	pubKey, ok := acc.Other.(ac.PubKey)
+	otherInfo, ok := acc.Other.(otherAccountInfo)
 	if !ok {
-		pubKey = nil
+		panic("vm.Account.Other should be type state.otherAccountInfo")
 	}
+
+	pubKey := otherInfo.PubKey
+	perms := otherInfo.Permissions
+
 	var storageRoot []byte
 	if acc.StorageRoot.IsZero() {
 		storageRoot = nil
@@ -182,6 +193,7 @@ func toStateAccount(acc *vm.Account) *ac.Account {
 		Code:        acc.Code,
 		Sequence:    uint(acc.Nonce),
 		StorageRoot: storageRoot,
+		Permissions: perms,
 	}
 }
 
