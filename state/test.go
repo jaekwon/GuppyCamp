@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/account"
 	. "github.com/tendermint/tendermint/common"
 	dbm "github.com/tendermint/tendermint/db"
+	ptypes "github.com/tendermint/tendermint/permission/types"
 	"github.com/tendermint/tendermint/types"
 
 	"io/ioutil"
@@ -24,13 +25,13 @@ func Tempfile(prefix string) (*os.File, string) {
 
 func RandAccount(randBalance bool, minBalance uint64) (*account.Account, *account.PrivAccount) {
 	privAccount := account.GenPrivAccount()
-	perms := account.DefaultPermissions
+	perms := ptypes.NewDefaultAccountPermissions()
 	acc := &account.Account{
 		Address:     privAccount.PubKey.Address(),
 		PubKey:      privAccount.PubKey,
 		Sequence:    RandUint(),
 		Balance:     minBalance,
-		Permissions: &perms,
+		Permissions: perms,
 	}
 	if randBalance {
 		acc.Balance += uint64(RandUint32())
@@ -75,8 +76,9 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 	for i := 0; i < numAccounts; i++ {
 		account, privAccount := RandAccount(randBalance, minBalance)
 		accounts[i] = GenesisAccount{
-			Address: account.Address,
-			Amount:  account.Balance,
+			Address:     account.Address,
+			Amount:      account.Balance,
+			Permissions: ptypes.NewDefaultAccountPermissions(),
 		}
 		privAccounts[i] = privAccount
 	}
@@ -102,6 +104,9 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 		ChainID:     "tendermint_test",
 		Accounts:    accounts,
 		Validators:  validators,
+		Params: &GenesisParams{
+			GlobalPermissions: ptypes.NewDefaultAccountPermissions(),
+		},
 	})
 	s0.Save()
 	return s0, privAccounts, privValidators
