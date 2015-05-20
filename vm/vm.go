@@ -699,7 +699,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			if vm.perms && !vm.HasPermission(callee, ptypes.Create) {
+			if vm.perms && !vm.HasPermission(callee, ptypes.CreateContract) {
 				return nil, ErrPermission{"create"}
 			}
 			contractValue := stack.Pop64()
@@ -759,7 +759,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			} else if snativeContract := vm.snativeContracts[addr]; vm.doug && snativeContract != nil {
 				// This is Doug and we're calling a snative contract
 				// TODO: Doug contract should have all permissions
-				ret, err = snativeContract(args)
+				ret, err = snativeContract(callee, args)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
