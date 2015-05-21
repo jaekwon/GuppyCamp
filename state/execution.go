@@ -371,7 +371,6 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 
 	case *types.CallTx:
 		var inAcc, outAcc *account.Account
-		var isDoug bool // is this a call to the gendoug?
 
 		// Validate input
 		inAcc = blockCache.GetAccount(tx.Input.Address)
@@ -476,14 +475,11 @@ func ExecTx(blockCache *BlockCache, tx_ types.Tx, runCall bool, evc events.Firea
 			txCache.UpdateAccount(callee) // because we adjusted by input above.
 			vmach := vm.NewVM(txCache, params, caller.Address, account.HashSignBytes(_s.ChainID, tx))
 			vmach.SetFireable(evc)
-			vmach.EnablePermissions()
+
+			vmach.EnablePermissions() // permission checks on CALL/CREATE
+			vmach.EnableSNatives()    // allows calls to snatives (with permission checks)
+
 			// NOTE: Call() transfers the value from caller to callee iff call succeeds.
-
-			if isDoug {
-				// enables the snative contracts
-				vmach.EnableDoug() // setupDoug(vmach, txCache, _s)
-			}
-
 			ret, err := vmach.Call(caller, callee, code, tx.Data, value, &gas)
 			exception := ""
 			if err != nil {
