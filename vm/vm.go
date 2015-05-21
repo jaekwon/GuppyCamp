@@ -117,6 +117,17 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 		}
 	}()
 
+	// if code is empty, callee may be snative contract
+	if vm.snative && len(code) == 0 {
+		if snativeContract := vm.SNativeContract(callee.Address); snativeContract != nil {
+			output, err = snativeContract(caller, input)
+			if err != nil {
+				*exception = err.Error()
+			}
+			return
+		}
+	}
+
 	if err = transfer(caller, callee, value); err != nil {
 		*exception = err.Error()
 		return
@@ -745,9 +756,6 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			if nativeContract := nativeContracts[addr]; nativeContract != nil {
 				// Native contract
 				ret, err = nativeContract(args, &gasLimit)
-			} else if snativeContract := vm.SNativeContract(addr); vm.snative && snativeContract != nil {
-				// Secure native contract (with access to chain state)
-				ret, err = snativeContract(callee, args)
 			} else {
 				// EVM contract
 				if ok = useGas(gas, GasGetAccount); !ok {
@@ -765,13 +773,15 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 					ret, err = vm.Call(callee, callee, acc.Code, args, value, gas)
 				} else {
 					if acc == nil {
-						// if we have not seen the account before, create it
-						// so we can send funds
-						if vm.perms && !vm.HasPermission(caller, ptypes.CreateAccount) {
-							return nil, ErrPermission{"create_account"}
-						}
-						acc = &Account{
-							Address: addr,
+						if _, ok := RegisteredSNativeContracts[addr]; vm.snative && ok {
+							acc = &Account{Address: addr}
+						} else {
+							// if we have not seen the account before, create it
+							// so we can send funds
+							if vm.perms && !vm.HasPermission(caller, ptypes.CreateAccount) {
+								return nil, ErrPermission{"create_account"}
+							}
+							acc = &Account{Address: addr}
 						}
 						vm.appState.UpdateAccount(acc)
 					}
