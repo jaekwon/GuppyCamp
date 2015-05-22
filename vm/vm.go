@@ -90,10 +90,13 @@ func (vm *VM) EnablePermissions() {
 	vm.perms = true
 }
 
-func (vm *VM) HasPermission(acc *Account, perm ptypes.PermFlag) bool {
+func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
-		return vm.HasPermission(vm.appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
+		if appState == nil {
+			panic(fmt.Sprintf("Global permission value not set for %b", perm))
+		}
+		return HasPermission(nil, appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
 	}
 	return v
 }
@@ -119,8 +122,8 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 
 	// if code is empty, callee may be snative contract
 	if vm.snative && len(code) == 0 {
-		if snativeContract := vm.SNativeContract(callee.Address); snativeContract != nil {
-			output, err = snativeContract(caller, input)
+		if snativeContract, ok := RegisteredSNativeContracts[callee.Address]; ok {
+			output, err = snativeContract(vm.appState, caller, input)
 			if err != nil {
 				*exception = err.Error()
 			}
@@ -699,7 +702,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			dbg.Printf(" => %v\n", log)
 
 		case CREATE: // 0xF0
-			if vm.perms && !vm.HasPermission(callee, ptypes.CreateContract) {
+			if vm.perms && !HasPermission(vm.appState, callee, ptypes.CreateContract) {
 				return nil, ErrPermission{"create_contract"}
 			}
 			contractValue := stack.Pop64()
@@ -727,7 +730,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 			}
 
 		case CALL, CALLCODE: // 0xF1, 0xF2
-			if vm.perms && !vm.HasPermission(callee, ptypes.Call) {
+			if vm.perms && !HasPermission(vm.appState, callee, ptypes.Call) {
 				return nil, ErrPermission{"call"}
 			}
 			gasLimit := stack.Pop64()
@@ -778,7 +781,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 						} else {
 							// if we have not seen the account before, create it
 							// so we can send funds
-							if vm.perms && !vm.HasPermission(caller, ptypes.CreateAccount) {
+							if vm.perms && !HasPermission(vm.appState, caller, ptypes.CreateAccount) {
 								return nil, ErrPermission{"create_account"}
 							}
 							acc = &Account{Address: addr}
