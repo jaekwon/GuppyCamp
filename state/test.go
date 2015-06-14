@@ -89,7 +89,7 @@ func RandGenesisState(numAccounts int, randBalance bool, minBalance uint64, numV
 		validators[i] = GenesisValidator{
 			PubKey: valInfo.PubKey,
 			Amount: valInfo.FirstBondAmount,
-			UnbondTo: []GenesisAccount{
+			UnbondTo: []BasicAccount{
 				{
 					Address: valInfo.PubKey.Address(),
 					Amount:  valInfo.FirstBondAmount,
