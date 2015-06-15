@@ -2,7 +2,8 @@
 
 # don't build if you're impatient
 if [[ ! $NO_BUILD ]]; then
-	docker build -t mint .
+	cd $GOPATH/src/github.com/tendermint/tendermint
+	docker build -t mint -f DOCKER/Dockerfile .
 fi
 
 # create the data-only container 
