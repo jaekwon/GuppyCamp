@@ -23,6 +23,8 @@ There are three types of information stored:
 Currently the commit signatures are duplicated in the Block parts as
 well as the Validation.  In the future this may change, perhaps by moving
 the Validation data outside the Block.
+
+Panics indicate probable corruption in the data
 */
 type BlockStore struct {
 	height uint
@@ -55,10 +57,12 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
 	if r == nil {
+		// XXX: THIS SHOULD NOT PANIC
 		panic(Fmt("Block does not exist at height %v", height))
 	}
 	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading block meta: %v", err))
 	}
 	bytez := []byte{}
@@ -68,6 +72,7 @@ func (bs *BlockStore) LoadBlock(height uint) *types.Block {
 	}
 	block := binary.ReadBinary(&types.Block{}, bytes.NewReader(bytez), &n, &err).(*types.Block)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading block: %v", err))
 	}
 	return block
@@ -78,10 +83,12 @@ func (bs *BlockStore) LoadBlockPart(height uint, index uint) *types.Part {
 	var err error
 	r := bs.GetReader(calcBlockPartKey(height, index))
 	if r == nil {
+		// XXX: THIS SHOULD NOT PANIC
 		panic(Fmt("BlockPart does not exist for height %v index %v", height, index))
 	}
 	part := binary.ReadBinary(&types.Part{}, r, &n, &err).(*types.Part)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading block part: %v", err))
 	}
 	return part
@@ -92,10 +99,12 @@ func (bs *BlockStore) LoadBlockMeta(height uint) *types.BlockMeta {
 	var err error
 	r := bs.GetReader(calcBlockMetaKey(height))
 	if r == nil {
+		// XXX: THIS SHOULDNT PANIC
 		panic(Fmt("BlockMeta does not exist for height %v", height))
 	}
 	meta := binary.ReadBinary(&types.BlockMeta{}, r, &n, &err).(*types.BlockMeta)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading block meta: %v", err))
 	}
 	return meta
@@ -109,10 +118,12 @@ func (bs *BlockStore) LoadBlockValidation(height uint) *types.Validation {
 	var err error
 	r := bs.GetReader(calcBlockValidationKey(height))
 	if r == nil {
+		// XXX: THIS SHOULDNT PANIC
 		panic(Fmt("BlockValidation does not exist for height %v", height))
 	}
 	validation := binary.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading validation: %v", err))
 	}
 	return validation
@@ -124,10 +135,12 @@ func (bs *BlockStore) LoadSeenValidation(height uint) *types.Validation {
 	var err error
 	r := bs.GetReader(calcSeenValidationKey(height))
 	if r == nil {
+		// XXX: THIS SHOULDNT PANIC
 		panic(Fmt("SeenValidation does not exist for height %v", height))
 	}
 	validation := binary.ReadBinary(&types.Validation{}, r, &n, &err).(*types.Validation)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Error reading validation: %v", err))
 	}
 	return validation
@@ -143,9 +156,11 @@ func (bs *BlockStore) LoadSeenValidation(height uint) *types.Validation {
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenValidation *types.Validation) {
 	height := block.Height
 	if height != bs.height+1 {
+		// SANITY CHECK
 		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
 	if !blockParts.IsComplete() {
+		// SANITY CHECK
 		panic(Fmt("BlockStore can only save complete block part sets"))
 	}
 
@@ -175,9 +190,11 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 }
 
 func (bs *BlockStore) saveBlockPart(height uint, index uint, part *types.Part) {
+	// SANITY CHECK
 	if height != bs.height+1 {
 		panic(Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.height+1, height))
 	}
+	// SANITY CHECK END
 	partBytes := binary.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
@@ -211,6 +228,7 @@ type BlockStoreStateJSON struct {
 func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	bytes, err := json.Marshal(bsj)
 	if err != nil {
+		// SANITY CHECK
 		panic(Fmt("Could not marshal state bytes: %v", err))
 	}
 	db.Set(blockStoreKey, bytes)
@@ -226,6 +244,7 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bsj := BlockStoreStateJSON{}
 	err := json.Unmarshal(bytes, &bsj)
 	if err != nil {
+		// SOMETHING HAS GONE HORRIBLY WRONG
 		panic(Fmt("Could not unmarshal bytes: %X", bytes))
 	}
 	return bsj

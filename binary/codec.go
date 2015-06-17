@@ -38,6 +38,7 @@ const (
 func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 	switch o := o.(type) {
 	case nil:
+		// SANITY CHECK
 		panic("nil type unsupported")
 	case byte:
 		WriteByte(typeByte, w, n, err)
@@ -82,6 +83,7 @@ func BasicCodecEncoder(o interface{}, w io.Writer, n *int64, err *error) {
 		WriteByte(typeTime, w, n, err)
 		WriteTime(o, w, n, err)
 	default:
+		// XXX: SHOULD THIS PANIC?
 		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o)))
 	}
 }
@@ -119,8 +121,10 @@ func BasicCodecDecoder(r io.Reader, n *int64, err *error) (o interface{}) {
 		o = ReadTime(r, n, err)
 	default:
 		if *err != nil {
+			// SOMETHING HAS GONE HORRIBLY WRONG (?!)
 			panic(*err)
 		} else {
+			// XXX: SHOULD THIS PANIC?
 			panic(fmt.Sprintf("Unsupported type byte: %X", type_))
 		}
 	}
@@ -157,6 +161,7 @@ func BasicCodecComparator(o1 interface{}, o2 interface{}) int {
 	case time.Time:
 		return int(o1.(time.Time).UnixNano() - o2.(time.Time).UnixNano())
 	default:
+		// XXX: SHOULD THIS PANIC?
 		panic(fmt.Sprintf("Unsupported type: %v", reflect.TypeOf(o1)))
 	}
 }

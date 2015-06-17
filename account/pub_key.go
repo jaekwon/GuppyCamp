@@ -38,6 +38,7 @@ func (pubKey PubKeyEd25519) Address() []byte { return binary.BinaryRipemd160(pub
 func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 	sig, ok := sig_.(SignatureEd25519)
 	if !ok {
+		// XXX: THIS SHOULD NOT PANIC. WE SHOULD LOG THE ERROR AND RETURN FALSE
 		panic("PubKeyEd25519 expects an SignatureEd25519 signature")
 	}
 	pubKeyBytes := new([32]byte)
