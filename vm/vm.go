@@ -90,11 +90,16 @@ func (vm *VM) EnablePermissions() {
 	vm.perms = true
 }
 
+// XXX: it is the duty of the contract writer to call known permissions
+// we do not convey if a permission is not set
+// (unlike in state/execution, where we guarantee HasPermission is called
+// on known permissions and panics else)
 func HasPermission(appState AppState, acc *Account, perm ptypes.PermFlag) bool {
 	v, err := acc.Permissions.Base.Get(perm)
 	if _, ok := err.(ptypes.ErrValueNotSet); ok {
 		if appState == nil {
-			panic(fmt.Sprintf("Global permission value not set for %b", perm))
+			fmt.Printf("\n\n***** Unknown permission %b! ********\n\n", perm)
+			return false
 		}
 		return HasPermission(nil, appState.GetAccount(ptypes.GlobalPermissionsAddress256), perm)
 	}
@@ -144,6 +149,7 @@ func (vm *VM) Call(caller, callee *Account, code, input []byte, value uint64, ga
 			*exception = err.Error()
 			err := transfer(callee, caller, value)
 			if err != nil {
+				// data has been corrupted in ram
 				panic("Could not return value to caller")
 			}
 		}
@@ -838,7 +844,7 @@ func (vm *VM) call(caller, callee *Account, code, input []byte, value uint64, ga
 
 		default:
 			dbg.Printf("(pc) %-3v Invalid opcode %X\n", pc, op)
-			panic(fmt.Errorf("Invalid opcode %X", op))
+			return nil, fmt.Errorf("Invalid opcode %X", op)
 		}
 
 		pc++
